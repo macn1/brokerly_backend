@@ -1,8 +1,48 @@
 from rest_framework import serializers
-from .models import User, VendorProfile, Domain
+from .models import User, VendorProfile, Domain,MemberProfile
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
+
+
+class MemberSerializer(serializers.ModelSerializer):
+    designation = serializers.CharField(source="member_profile.designation", required=False)
+    
+    class Meta:
+        model = User
+        fields = [
+            'id',
+            'name',
+            'email',
+            'phone_number',
+            'designation',
+            'password',
+        ]
+        extra_kwargs = {
+            'password': {'write_only': True},
+        }
+
+    def create(self, validated_data):
+        profile_data = validated_data.pop("member_profile", {})
+        request = self.context["request"]
+
+        member = User.objects.create_member(
+            name=validated_data["name"],
+            email=validated_data["email"],
+            password=validated_data.get("password"),
+            phone_number=validated_data.get("phone_number"),
+            domain=request.domain 
+        )
+
+        # Create MemberProfile
+        MemberProfile.objects.create(
+            user=member,
+            designation=profile_data.get("designation"),
+            domain=request.domain 
+        )
+
+        return member
+
 
 # -------------------------------
 # User Registration Serializer

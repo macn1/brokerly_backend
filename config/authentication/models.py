@@ -10,7 +10,7 @@ def generate_random():
     return ''.join(random.choice(characters) for _ in range(12))
 
 # Choices
-ROLE_CHOICES = (("Admin", "Admin"), ("User", "User"), ("Vendor", "Vendor"))
+ROLE_CHOICES = (("Admin", "Admin"), ("User", "User"), ("Vendor", "Vendor"),   ("Member", "Member"))
 VENDOR_STATUS_CHOICES = (
     ("Pending", "Pending"),
     ("Approved", "Approved"),
@@ -36,6 +36,24 @@ class AccountManager(BaseUserManager):
         user.set_password(password)
         user.save(using=self._db)
         return user
+    def create_member(self, name, email, password=None, phone_number=None, domain=None):
+        if not email:
+            raise ValueError('Member must have an email address')
+    
+        email = self.normalize_email(email)
+        user = self.model(
+            email=email,
+            name=name,
+            role='Member',
+            phone_number=phone_number,
+            domain=domain,
+            is_active=True,
+            is_staff=False  
+        )
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
 
     def create_vendor(self, name, email, role='Vendor', password=None, phone_number=None, domain=None):
         if not email:
@@ -131,3 +149,18 @@ class VendorProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.name} - {self.domain.name if self.domain else 'No Domain'}"
+
+class MemberProfile(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='member_profile'
+    )
+    domain = models.ForeignKey('Domain', on_delete=models.SET_NULL, null=True, blank=True)
+    designation = models.CharField(max_length=255, null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.user.email
