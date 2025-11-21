@@ -92,7 +92,7 @@ class FacilityCreateListApiView(APIView):
     permission_classes = [IsAuthenticated,IsDomainAdmin]
 
     def post(self, request):
-        serializer = FacilityService(data=request.data)
+        serializer = FacilityServiceSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(
                 owner=request.user,
@@ -197,6 +197,12 @@ class AmenityListCreateAPIView(APIView):
             serializer.save(owner=request.user)
             return Response(serializer.data, status=201)
         return Response(serializer.errors, status=400)
+
+class ListAllAmenitiesAPIView(APIView):
+    def get(self,request):
+        amenities = Amenity.objects.all()
+        serializer = AmenitySerializer(amenities)
+        return Response(serializer.data,status=status.HTTP_200_OK)
 
 
 
