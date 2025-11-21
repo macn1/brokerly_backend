@@ -4,6 +4,19 @@ from datetime import time
 
 
 ROOM_TYPES = [("1BHK", "1BHK"), ("2BHK", "2BHK"), ("3BHK", "3BHK")]
+APARTMENT_STATUS_CHOICES = (
+    ("Pending", "Pending"),
+    ("Approved", "Approved"),
+    ("Rejected", "Rejected"),
+)
+BOOKING_STATUS_CHOICES = (
+    ("Pending", "Pending"),         # user requested, waiting for review
+    ("Confirmed", "Confirmed"),     # approved & booked
+    ("Cancelled", "Cancelled"),     # cancelled by user/admin
+    ("CheckedIn", "Checked In"),    # user has arrived
+    ("CheckedOut", "Checked Out"),  # user has left
+    ("Completed", "Completed"),     # booking full lifecycle completed
+)
 
 
 class Address(models.Model):
@@ -53,6 +66,14 @@ class FacilityService(models.Model):
 
 class Apartments(models.Model):
     name = models.CharField(max_length=100)
+    status = models.CharField(max_length=50,choices=APARTMENT_STATUS_CHOICES,default="Pending")
+    availability = models.CharField(max_length=50,choices=BOOKING_STATUS_CHOICES,default='Pending')
+    domain = models.ForeignKey(
+        Domain,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
+    )
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="apartments")
     address = models.ForeignKey(
         Address, on_delete=models.CASCADE, related_name="apartments"

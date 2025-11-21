@@ -8,18 +8,21 @@ from .serializer import AmenitySerializer,FacilityServiceSerializer,ApartmentSer
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.generics import get_object_or_404
 from permissoins.super_permissions import IsDomainAdmin
-
+from .utils import get_domain_from_request
 
 
 class ApartmentListCreateAPIView(APIView):
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated,IsDomainAdmin]
 
     def post(self, request):
+        print(request.domain,"domain132212")
         serializer = ApartmentSerializer(
-            data=request.data, context={"request": request}
+            data=request.data, context={"request": request},
         )
         if serializer.is_valid():
-            serializer.save()
+            serializer.save(
+            domain=request.domain
+            )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -31,6 +34,19 @@ class ApartmentListCreateAPIView(APIView):
         )
         serializer = ApartmentDetailSerializer(apartments, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+    
+class ApartmentPaginatedListAPI(APIView):
+    def get(self,request):
+        apartments= (
+            Apartments.objects.select_related("address", "owner")
+            .prefetch_related( "facilities", "amenities", "images")
+            .order_by("id")
+        )
+        paginator = PageNumberPagination()
+        paginator.page_size = 10
+        result_page = paginator.paginate_queryset(apartments,request)
+        serializer = ApartmentDetailSerializer(result_page,many=True)
+        return paginator.get_paginated_response(serializer.data)    
 
 
 class ApartmentDetailupdateAPIView(APIView):
@@ -92,6 +108,7 @@ class FacilityCreateListApiView(APIView):
     permission_classes = [IsAuthenticated,IsDomainAdmin]
 
     def post(self, request):
+        print(request.domain,"domain12")
         serializer = FacilityServiceSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save(
@@ -201,7 +218,7 @@ class AmenityListCreateAPIView(APIView):
 class ListAllAmenitiesAPIView(APIView):
     def get(self,request):
         amenities = Amenity.objects.all()
-        serializer = AmenitySerializer(amenities)
+        serializer = AmenitySerializer(amenities,many=True)
         return Response(serializer.data,status=status.HTTP_200_OK)
 
 
