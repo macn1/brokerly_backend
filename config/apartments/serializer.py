@@ -45,10 +45,12 @@ class ApartmentSerializer(serializers.ModelSerializer):
 
     images = ApartmentImageSerializer(many=True, read_only=True)
     owner = serializers.PrimaryKeyRelatedField(read_only=True)
-
+    domain_id = serializers.IntegerField(source="domain.id", read_only=True)
+    domain_name = serializers.CharField(source="domain.name", read_only=True)
     class Meta:
         model = Apartments
         fields = "__all__"
+        read_only_fields = ["owner", "domain", "status"]
 
     def create(self, validated_data):
         request = self.context["request"]
@@ -57,7 +59,8 @@ class ApartmentSerializer(serializers.ModelSerializer):
         address_data = validated_data.pop("address")
         amenities_data = validated_data.pop("amenities", [])
         facilities_data = validated_data.pop("facilities", [])
-
+        validated_data.pop("domain", None)
+        validated_data.pop("status", None)
         # Create address
         address = Address.objects.create(**address_data)
 
@@ -65,6 +68,8 @@ class ApartmentSerializer(serializers.ModelSerializer):
         apartment = Apartments.objects.create(
             address=address,
             owner=request.user,
+            status=validated_data.get("status", "Pending"),
+            domain=request.domain,
             **validated_data
         )
 
@@ -82,7 +87,8 @@ class ApartmentSerializer(serializers.ModelSerializer):
                 ApartmentImages.objects.create(
                     apartment=apartment,
                     image=file_obj,
-                    sequence=sequence
+                    sequence=sequence,
+                    
                 )
 
         return apartment
@@ -142,6 +148,8 @@ class ApartmentDetailSerializer(serializers.ModelSerializer):
     amenities = AmenitySerializer(many=True)
     owner = serializers.PrimaryKeyRelatedField(read_only=True)
     images = ApartmentImageSerializer(many=True, read_only=True)
+    domain_id = serializers.IntegerField(source="domain.id", read_only=True)
+    domain_name = serializers.CharField(source="domain.name", read_only=True)
 
     class Meta:
         model = Apartments
