@@ -14,7 +14,7 @@ REQUEST_MODE_CHOICES = (
 )
 
 class LeadRequest(models.Model):
-    user = models.ForeignKey(
+    vendor_name = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
         null=True,
