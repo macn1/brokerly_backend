@@ -7,7 +7,8 @@ from .views import (
     VendorListAPi,
     VendorDetailUpdateDeleteAPIVIew,
     MemberCreateAPIView,
-    MemberReadUpdateDeleteApi
+    MemberReadUpdateDeleteApi,
+    ListAllMemberDomain
 )
 
 
@@ -15,6 +16,9 @@ urlpatterns = [
     path("register/user", userRegisterAPIView.as_view()),
     path("register/member", MemberCreateAPIView.as_view()),
     path("register/vendor", VendorRegisterAPIView.as_view()),
+    
+    
+    path("member/list-all", ListAllMemberDomain.as_view()),
     
     
     path("vendor/listall-vendors", VendorListAPi.as_view()),

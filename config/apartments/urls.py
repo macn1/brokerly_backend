@@ -9,7 +9,11 @@ from .views import (
     ApartmentListCreateAPIView,
     ApartmentDetailupdateAPIView,
     ListAllAmenitiesAPIView,
-    ApartmentPaginatedListAPI
+    ApartmentPaginatedListAPI,
+    ApartmentPaginatedListAPIVendor,
+    ApartmentPaginatedListAPIClients,
+    listAllAprtmentsName,
+    AdminProjectsSTatus
 )
 
 urlpatterns = [
@@ -21,8 +25,15 @@ urlpatterns = [
     path("facility", FacilityCreateListApiView.as_view()),
     path("paginated-facility", PaginatedFacilityAPIView.as_view()),
     
+    path("apartment-name", listAllAprtmentsName.as_view(), name="apartment"),
     path("apartment", ApartmentListCreateAPIView.as_view(), name="apartment"),
     path("apartment-data", ApartmentPaginatedListAPI.as_view(), name="apartment"),
+    path("apartment-vendor-data", ApartmentPaginatedListAPIVendor.as_view(), name="apartment"),
+    path("apartment-clients-data", ApartmentPaginatedListAPIClients.as_view(), name="apartment"),
+    
+    path("apartment-status/<int:pk>", AdminProjectsSTatus.as_view()),
+
+    
     
     path(
         "apartment/<int:pk>", ApartmentDetailupdateAPIView.as_view(), name="apartment"

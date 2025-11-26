@@ -4,12 +4,57 @@ from rest_framework import status
 from rest_framework.views import APIView
 from .models import Amenity ,FacilityService,Apartments
 from rest_framework.permissions import IsAuthenticated,IsAdminUser,AllowAny
-from .serializer import AmenitySerializer,FacilityServiceSerializer,ApartmentSerializer,ApartmentDetailSerializer
+from .serializer import AmenitySerializer,FacilityServiceSerializer,ApartmentSerializer,ApartmentDetailSerializer,ApartmentNameSerializer
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.generics import get_object_or_404
 from permissoins.super_permissions import IsDomainAdmin
-from .utils import get_domain_from_request
+from .models import APARTMENT_STATUS_CHOICES
 
+
+
+class AdminProjectsSTatus(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+
+    def put(self, request, pk):
+        try:
+            apartment = Apartments.objects.get(id=pk)
+        except Apartments.DoesNotExist:
+            return Response({"error": "Apartment not found"}, status=404)
+
+        new_status = request.data.get("status")
+
+        if not new_status:
+            return Response({"error": "Status is required"}, status=400)
+
+        # Validate value in choice list
+        valid_status = dict(APARTMENT_STATUS_CHOICES).keys()
+        if new_status not in valid_status:
+            return Response({"error": "Invalid status"}, status=400)
+
+        apartment.status = new_status
+        apartment.save()
+
+        return Response(
+            {"message": "Status updated successfully", "status": apartment.status},
+            status=200
+        )
+
+class listAllAprtmentsName(APIView):
+    permission_classes=[IsAuthenticated,IsDomainAdmin]
+    def get(self, request):
+        domain = request.domain
+
+        apartments = (
+        Apartments.objects
+        .filter(domain=domain)
+        .only("id", "name")
+        .order_by("id")
+         )
+        serializer = ApartmentNameSerializer(apartments, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+
+        
 
 class ApartmentListCreateAPIView(APIView):
     permission_classes = [IsAuthenticated,IsDomainAdmin]
@@ -36,6 +81,7 @@ class ApartmentListCreateAPIView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
     
 class ApartmentPaginatedListAPI(APIView):
+    permission_classes=[IsAuthenticated,IsAdminUser]
     def get(self,request):
         apartments= (
             Apartments.objects.select_related("address", "owner")
@@ -46,7 +92,38 @@ class ApartmentPaginatedListAPI(APIView):
         paginator.page_size = 10
         result_page = paginator.paginate_queryset(apartments,request)
         serializer = ApartmentDetailSerializer(result_page,many=True)
-        return paginator.get_paginated_response(serializer.data)    
+        return paginator.get_paginated_response(serializer.data) 
+    
+class ApartmentPaginatedListAPIClients(APIView):
+    def get(self,request):
+        apartments= (
+            Apartments.objects.filter(status='Pending')
+            .select_related("address", "owner")
+            .prefetch_related( "facilities", "amenities", "images")
+            .order_by("id")
+        )
+        paginator = PageNumberPagination()
+        paginator.page_size = 20
+        result_page = paginator.paginate_queryset(apartments,request)
+        serializer = ApartmentDetailSerializer(result_page,many=True)
+        return paginator.get_paginated_response(serializer.data) 
+
+class ApartmentPaginatedListAPIVendor(APIView):
+    permission_classes=[IsAuthenticated,IsDomainAdmin]
+    def get(self,request):
+        domain =request.domain
+        print(domain,"domai")
+        apartments= (
+            Apartments.objects.filter(domain=domain)
+            .select_related("address", "owner")
+            .prefetch_related( "facilities", "amenities", "images")
+            .order_by("id")
+        )
+        paginator = PageNumberPagination()
+        paginator.page_size = 10
+        result_page = paginator.paginate_queryset(apartments,request)
+        serializer = ApartmentDetailSerializer(result_page,many=True)
+        return paginator.get_paginated_response(serializer.data)     
 
 
 class ApartmentDetailupdateAPIView(APIView):

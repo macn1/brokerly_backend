@@ -52,7 +52,7 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['name', 'email', 'phone_number', 'password']
+        fields = ['name', 'email', 'phone_number', 'password','id']
 
     def create(self, validated_data):
         validated_data['role'] = 'User'

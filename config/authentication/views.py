@@ -26,6 +26,15 @@ class MyTokenObtainPairView(TokenObtainPairView):
     serializer_class = MyTokenObtainPairSerializer
 
 
+
+class ListAllMemberDomain(APIView):
+    permission_classes=[IsAuthenticated,IsDomainAdmin]
+    def get(self,request):
+        domain = request.domain
+        user = User.objects.filter(role="Member",domain=domain)
+        serializer = UserRegisterSerializer(user,many=True)
+        return Response(serializer.data,status=status.HTTP_200_OK)
+
 class MemberCreateAPIView(APIView):
     permission_classes = [IsAuthenticated,IsDomainAdmin]
 
