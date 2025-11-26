@@ -48,3 +48,44 @@ class LeadRequest(models.Model):
 
     def __str__(self):
         return f"{self.name} → {self.apartment.name}"
+
+
+VISIT_STATUS_CHOICES = (
+    ("Interested", "Interested"),
+    ("Rejected", "Rejected"),
+    ("Holding", "Holding"),
+    ("Booked", "Booked"),
+    ("Paid", "Paid"),
+)
+
+class LeadVisit(models.Model):
+    lead = models.ForeignKey(
+        LeadRequest,
+        on_delete=models.CASCADE,
+        related_name="visits"
+    )
+    
+    visit_date = models.DateTimeField(auto_now_add=True)
+
+    status = models.CharField(
+        max_length=30,
+        choices=VISIT_STATUS_CHOICES,
+        default="Interested"
+    )
+
+    amount_paid = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0
+    )
+
+    pending_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0
+    )
+
+    remarks = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"Visit for {self.lead.name} - {self.status}"

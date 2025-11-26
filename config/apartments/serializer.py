@@ -1,6 +1,11 @@
 from rest_framework import serializers
 from .models import Amenity, FacilityService, Address, ApartmentImages, Apartments
 
+class ApartmentNameSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Apartments
+        fields = ["id", "name"]
+
 
 class AmenitySerializer(serializers.ModelSerializer):
     class Meta:
