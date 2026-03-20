@@ -9,6 +9,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.generics import get_object_or_404
 from permissoins.super_permissions import IsDomainAdmin
 from .models import APARTMENT_STATUS_CHOICES
+from rest_framework.permissions import AllowAny
 
 
 
@@ -57,24 +58,26 @@ class listAllAprtmentsName(APIView):
         
 
 class ApartmentListCreateAPIView(APIView):
-    permission_classes = [IsAuthenticated,IsDomainAdmin]
+
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [IsDomainAdmin()]
+        return [AllowAny()]  # or whatever you want for GET
 
     def post(self, request):
-        print(request.domain,"domain132212")
+        print(request.domain, "domain132212")
         serializer = ApartmentSerializer(
             data=request.data, context={"request": request},
         )
         if serializer.is_valid():
-            serializer.save(
-            domain=request.domain
-            )
+            serializer.save(domain=request.domain)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def get(self, request):
         apartments = (
             Apartments.objects.select_related("address", "owner")
-            .prefetch_related( "facilities", "amenities", "images")
+            .prefetch_related("facilities", "amenities", "images")
             .order_by("id")
         )
         serializer = ApartmentDetailSerializer(apartments, many=True)
@@ -97,7 +100,7 @@ class ApartmentPaginatedListAPI(APIView):
 class ApartmentPaginatedListAPIClients(APIView):
     def get(self,request):
         apartments= (
-            Apartments.objects.filter(status='Pending')
+            Apartments.objects.filter(status='Approved')
             .select_related("address", "owner")
             .prefetch_related( "facilities", "amenities", "images")
             .order_by("id")

@@ -10,7 +10,72 @@ from rest_framework.permissions import IsAuthenticated
 from permissoins.super_permissions import IsDomainAdmin
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from .serializer import LeadRequestSerializer, LeadVisitSerializer, LeadBookingListSerializer,VendorTransactionSerializer
+# Add this import at the top of views.py
+from django.db.models import Sum, Count
 
+
+# Add this class at the bottom of views.py
+class VendorTransactionSummaryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        # Get all vendors who have at least one apartment
+        vendors = (
+            User.objects
+            .filter(apartments__isnull=False)
+            .annotate(
+                total_apartments = Count('apartments', distinct=True),
+                total_paid       = Sum('apartments__leads__visits__amount_paid', default=0),
+                total_pending    = Sum('apartments__leads__visits__pending_amount', default=0),
+            )
+            .values('id', 'name', 'email', 'total_apartments', 'total_paid', 'total_pending')
+            .order_by('-total_paid')
+        )
+
+        # For each vendor, attach their apartment breakdown
+        data = []
+        for vendor in vendors:
+            apartments = (
+                Apartments.objects
+                .filter(owner_id=vendor['id'])
+                .annotate(
+                    paid    = Sum('leads__visits__amount_paid', default=0),
+                    pending = Sum('leads__visits__pending_amount', default=0),
+                )
+                .values('id', 'name', 'availability', 'paid', 'pending')
+            )
+            vendor['apartments'] = list(apartments)
+            data.append(vendor)
+
+        serializer = VendorTransactionSerializer(data, many=True)
+        return Response(serializer.data)
+class AllbookingsApiView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        leads = LeadRequest.objects.all().order_by('-created')
+        paginator = PageNumberPagination()
+        paginator.page_size = 10
+        result_page = paginator.paginate_queryset(leads, request)
+        serializer = LeadBookingListSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+
+
+class AllbokingsDomainApiView(APIView):
+    permission_classes = [IsAuthenticated, IsDomainAdmin]
+
+    def get(self, request):
+        domain = request.domain
+        leads = LeadRequest.objects.filter(
+            apartment__domain=domain
+        ).order_by('-created')
+        paginator = PageNumberPagination()
+        paginator.page_size = 10
+        result_page = paginator.paginate_queryset(leads, request)
+        serializer = LeadBookingListSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
 
 class LeadVisitListCreateAPIView(APIView):
@@ -99,16 +164,23 @@ class PaginatedLeadPageapiVendor(APIView):
         return paginator.get_paginated_response(serializer.data)
 
 class ReadUpdateDeleleLeads(APIView):
-    permission_classes=[IsAuthenticated]
-    
-    def get (self,request,pk):
-        leads = get_object_or_404(LeadRequest,pk=pk)
-        serialzier = LeadRequestSerializer(leads)
-        return Response(serialzier.data,status=status.HTTP_200_OK)
-    
-    def delete(self,request,pk):
-        leads = get_object_or_404(LeadRequest,pk=pk)
-        leads.delete()
-        return Response({"message","item deteted"},status=status.HTTP_204_NO_CONTENT)
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request, pk):
+        lead = get_object_or_404(LeadRequest, pk=pk)
+        serializer = LeadRequestSerializer(lead)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def patch(self, request, pk):
+        lead = get_object_or_404(LeadRequest, pk=pk)
+        serializer = LeadRequestSerializer(lead, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()  # ← triggers update() which syncs apartment
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def delete(self, request, pk):
+        lead = get_object_or_404(LeadRequest, pk=pk)
+        lead.delete()
+        return Response({"message": "Lead deleted"}, status=status.HTTP_204_NO_CONTENT)
 
